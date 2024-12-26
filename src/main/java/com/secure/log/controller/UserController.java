@@ -3,13 +3,24 @@ package com.secure.log.controller;
 import com.secure.log.dto.UserDto;
 import com.secure.log.exception.ResourceAlreadyExistsException;
 import com.secure.log.exception.ResourceNotFoundException;
+import com.secure.log.jwt.JwtUtils;
+import com.secure.log.login.LoginRequest;
+import com.secure.log.login.LoginResponse;
 import com.secure.log.model.User;
 import com.secure.log.response.ApiResponse;
 import com.secure.log.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
@@ -26,15 +37,11 @@ public class UserController {
 
     private final UserService userService;
 
-    @GetMapping("/hi")
-    public String hi(){
-        return "Hi";
-    }
+    @Autowired
+    private JwtUtils jwtUtils;
 
-    @GetMapping("/hello")
-    public String hello(){
-        return "Hello";
-    }
+    @Autowired
+    private AuthenticationManager authenticationManager;
 
     @GetMapping("/get")
     public ResponseEntity<List<UserDto>> getAllUsers() {
@@ -67,6 +74,34 @@ public class UserController {
             return ResponseEntity.status(HttpStatus.CONFLICT)
                     .body(new ApiResponse(e.getMessage(), null));
         }
+    }
+
+    @PostMapping("/sign-in")
+    public ResponseEntity<?> authenticateUser(@RequestBody LoginRequest loginRequest) {
+        Authentication authentication;
+        try {
+            authentication = authenticationManager
+                    .authenticate(new UsernamePasswordAuthenticationToken(loginRequest.getUsername(), loginRequest.getPassword()));
+        } catch (AuthenticationException exception) {
+            Map<String, Object> map = new HashMap<>();
+            map.put("message", "Bad credentials");
+            map.put("status", false);
+            return new ResponseEntity<Object>(map, HttpStatus.NOT_FOUND);
+        }
+
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+
+        UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+
+        String jwtToken = jwtUtils.generateTokenFromUsername(userDetails);
+
+        List<String> roles = userDetails.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .collect(Collectors.toList());
+
+        LoginResponse response = new LoginResponse(jwtToken, userDetails.getUsername(), roles);
+
+        return ResponseEntity.ok(response);
     }
 
     @PutMapping("/update-user")
