@@ -6,7 +6,6 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.util.HashSet;
-import java.util.Objects;
 import java.util.Set;
 
 @Entity
@@ -37,4 +36,5 @@ public class Role {
     public Role(AppRole roleName) {
         this.roleName = roleName;
     }
+
 }

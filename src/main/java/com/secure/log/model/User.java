@@ -30,12 +30,15 @@ public class User {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long userId;
 
-    @Column(name = "user_name")
     @NotBlank(message = "Username must not be blank")
+    @Size(max = 20)
+    @Column(name = "user_name", nullable = false, unique = true)
     private String userName;
 
     @NotBlank(message = "Email must not be blank")
     @Email(message = "Email should be valid")
+    @Size(max = 50)
+    @Column(name = "email", nullable = false, unique = true)
     private String email;
 
     @NotBlank(message = "Password must not be blank")
@@ -82,6 +85,12 @@ public class User {
     @UpdateTimestamp
     @Column(name = "update_date")
     private LocalDateTime updateDate;
+
+    public User(String userName, String email, String password) {
+        this.userName = userName;
+        this.email = email;
+        this.password = password;
+    }
 
     @Override
     public boolean equals(Object o) {
